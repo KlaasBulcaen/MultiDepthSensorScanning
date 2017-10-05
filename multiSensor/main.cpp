@@ -7,15 +7,24 @@
 #include <iostream>
 #include <fstream>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #define _CRTDBG_MAP_ALLOC  
 #include <stdlib.h>  
 #include <crtdbg.h>
 
-#define DEPTHRESOLUTION NUI_IMAGE_RESOLUTION_320x240
 //#define DEPTHRESOLUTION NUI_IMAGE_RESOLUTION_80x60
+#define DEPTHRESOLUTION NUI_IMAGE_RESOLUTION_320x240
+
+#define IMGRESOLUTION NUI_IMAGE_RESOLUTION_1280x960
+//#define IMGRESOLUTION NUI_IMAGE_RESOLUTION_640x480
+
+
 
 INuiSensor* InitSensor(int index = 0)
 {
+	
 	INuiSensor* sensor;
 	if (FAILED(NuiCreateSensorByIndex(index, &sensor)))
 	{
@@ -63,16 +72,13 @@ int main()
 	//create datastream
 	HANDLE m_hNextVideoFrameEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	HANDLE streamhandle = NULL;
-	if (!SUCCEEDED(NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, DEPTHRESOLUTION, 0, 2, m_hNextVideoFrameEvent, &streamhandle)))
+	if (!SUCCEEDED(NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, IMGRESOLUTION, 0, 2, m_hNextVideoFrameEvent, &streamhandle)))
 	{
 		std::cout << "Failed to get stream" << std::endl;
 		std::cin.get();
 		return 1;
 	}
 
-
-place:
-	std::cout << "check" << std::endl;
 
 	//wait till frame is received
 	WaitForSingleObject(m_hNextVideoFrameEvent, INFINITE);
@@ -87,18 +93,20 @@ place:
 		return 1;
 	}
 
+
+
 	//define resolution
 	unsigned long w = 0;
 	unsigned long h = 0;
-	NuiImageResolutionToSize(DEPTHRESOLUTION, w, h);
+	NuiImageResolutionToSize(IMGRESOLUTION, w, h);
 	UINT width = static_cast<int>(w);
 	UINT height = static_cast<int>(h);
 
 	//create filestream
-	std::ofstream  objFile;
-	objFile.open("depthIMG.obj");
+//	std::ofstream  objFile;
+//	objFile.open("depthIMG.obj");
 
-
+	
 	//load data to readable format
 	NUI_LOCKED_RECT LockedRect;
 	pImageFrame->pFrameTexture->LockRect(0, &LockedRect, NULL, 0);
@@ -106,40 +114,43 @@ place:
 	{
 		std::cout << "texture has no correct size" << std::endl;
 	}
+	
 
-	UINT * pBuffer = reinterpret_cast<UINT*>(LockedRect.pBits);
+	ULONG * pBuffer = reinterpret_cast<ULONG*>(LockedRect.pBits);
 
+	//imgfile
+
+//	stbi_write_png("colorinfo.png", width, height, 3, pBuffer, width * 3);
+	stbi_write_png("colorinfo.png", width, height, 3, pBuffer, width * 4);
+
+	/*
 	pImageFrame->pFrameTexture->UnlockRect(0);
 
 	//write depth info to file
-	for (size_t y = 0; y < height / 2; y++)
+	for (size_t y = 0; y < height; y++)
 	{
-		for (size_t x = 0; x < width / 2; x++)
+		for (size_t x = 0; x < width; x++)
 		{
 			objFile << "v " << x << ", " << y << ", " << static_cast<float>(pBuffer[y*width + x]) / 10000000.0f << std::endl;
 		}
 	}
 
 	//create mesh, do not include quads with no depth
-	for (size_t y = 0; y < height / 2 - 1; y++)
+	for (size_t y = 0; y < height - 1; y++)
 	{
-		for (size_t x = 0; x < width / 2 - 1; x++)
+		for (size_t x = 0; x < width - 1; x++)
 		{
-			//int sumDepth = pBuffer[y*width + x].depth + pBuffer[y*width + x + 1].depth + pBuffer[y*width + x + width].depth + pBuffer[y*width + x + width + 1].depth;
-			//int sumDepth = pBuffer[y*width + x] + pBuffer[y*width + x + 1] + pBuffer[y*width + x + width] + pBuffer[y*width + x + width + 1];
-			//if (sumDepth > .5f)
-			//{
-				//make faces for a plane with depth info
+
+			//make faces for a plane with depth info
 			objFile << "f " << y*width + x + 1 << ", " << y*width + x + 2 << ", " << y*width + x + width + 1 << std::endl;
 			objFile << "f " << y*width + x + width + 1 << ", " << y*width + x + 2 << ", " << y*width + x + width + 2 << std::endl;
-			//}
+
 		}
 	}
+
 	objFile.close();
-
-	goto place;
-
-	std::cout << "obj completed" << std::endl;
+	*/
+	std::cout << "file completed" << std::endl;
 
 	std::cout << "Press Enter to close window" << std::endl;
 	std::cin.get();
